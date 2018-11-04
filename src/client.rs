@@ -3,8 +3,6 @@ use hyper::client::RequestBuilder;
 use hyper::client::Response;
 use hyper::net::HttpsConnector;
 use hyper::Url;
-use hyper_native_tls::native_tls::TlsConnector;
-use hyper_native_tls::NativeTlsClient;
 use serde_json;
 use serde_json::de::IoRead as SerdeIoRead;
 use std::io::Read;
@@ -40,12 +38,12 @@ impl Client {
     }
 
     /// Create a new influxdb client with https
-    pub fn new_with_option<T: ToString>(host: T, db: T, tls_option: Option<TLSOption>) -> Self {
+    pub fn new_with_tls<T: ToString>(host: T, db: T) -> Self {
         Client {
             host: host.to_string(),
             db: db.to_string(),
             authentication: None,
-            client: HttpClient::new_with_option(tls_option),
+            client: HttpClient::new_with_tls(),
         }
     }
 
@@ -77,8 +75,8 @@ impl Client {
     }
 
     /// Change http to https, but don't leave the read write timeout setting
-    pub fn set_tls(mut self, connector: Option<TLSOption>) -> Self {
-        self.client = HttpClient::new_with_option(connector);
+    pub fn set_tls(mut self) -> Self {
+        self.client = HttpClient::new_with_tls();
         self
     }
 
@@ -507,26 +505,6 @@ impl Default for Client {
     }
 }
 
-/// Option for configuring the behavior of a `Client`.
-#[derive(Default, Clone)]
-pub struct TLSOption {
-    /// A `native_tls::TlsConnector` configured as desired for HTTPS connections.
-    pub connector: Option<TlsConnector>,
-}
-
-impl TLSOption {
-    /// Create a new Tls_option
-    pub fn new(connector: TlsConnector) -> Self {
-        TLSOption {
-            connector: Some(connector),
-        }
-    }
-
-    fn get_connector(self) -> TlsConnector {
-        self.connector.unwrap()
-    }
-}
-
 #[derive(Debug)]
 struct HttpClient {
     client: hyper_client,
@@ -540,21 +518,12 @@ impl HttpClient {
         }
     }
 
-    /// Constructs a new `HttpClient` with option config.
-    fn new_with_option(tls_option: Option<TLSOption>) -> Self {
-        let connector = match tls_option {
-            Some(tls_connector) => {
-                let native_tls_client = NativeTlsClient::from(tls_connector.get_connector());
-                HttpsConnector::new(native_tls_client)
-            }
-            None => {
-                let ssl = NativeTlsClient::new().unwrap();
-                HttpsConnector::new(ssl)
-            }
-        };
-
+    /// Constructs a new `HttpClient` with TLS.
+    fn new_with_tls() -> Self {
         HttpClient {
-            client: hyper_client::with_connector(connector),
+            client: hyper_client::with_connector(HttpsConnector::new(
+                hyper_rustls::TlsClient::new(),
+            )),
         }
     }
 

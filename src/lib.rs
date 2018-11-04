@@ -67,7 +67,7 @@
 #![deny(missing_docs)]
 
 extern crate hyper;
-extern crate hyper_native_tls;
+extern crate hyper_rustls;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -82,6 +82,6 @@ pub mod keys;
 /// Serialization module
 pub mod serialization;
 
-pub use client::{Client, TLSOption, UdpClient};
+pub use client::{Client, UdpClient};
 pub use error::Error;
 pub use keys::{ChunkedQuery, Node, Point, Points, Precision, Query, Series, Value};
